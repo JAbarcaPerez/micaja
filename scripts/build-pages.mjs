@@ -2,12 +2,9 @@ import { spawnSync } from 'node:child_process'
 import { copyFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-process.env.GITHUB_PAGES = 'true'
-
 const result = spawnSync('npm', ['run', 'build'], {
   stdio: 'inherit',
   shell: true,
-  env: process.env,
 })
 
 if (result.status !== 0) {

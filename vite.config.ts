@@ -6,9 +6,11 @@ import path from 'path'
 
 // Cambia esto si el repositorio en GitHub tiene otro nombre
 const repoName = 'micaja'
-const base = process.env.GITHUB_PAGES === 'true' ? `/${repoName}/` : '/'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const base = mode === 'production' ? `/${repoName}/` : '/'
+
+  return {
   base,
   plugins: [
     react(),
@@ -65,4 +67,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  }
 })
