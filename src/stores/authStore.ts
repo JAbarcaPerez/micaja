@@ -11,6 +11,7 @@ interface AuthState {
   isInitialized: boolean
   login: (email: string, password: string) => Promise<string | null>
   register: (name: string, email: string, password: string) => Promise<string | null>
+  resetPassword: (email: string, newPassword: string) => Promise<string | null>
   logout: () => void
   continueAsGuest: () => void
   initialize: () => Promise<void>
@@ -73,6 +74,29 @@ export const useAuthStore = create<AuthState>()(
           user: { id: id as number, name: name.trim(), email: normalizedEmail },
           isGuest: false,
         })
+        return null
+      },
+
+      resetPassword: async (email, newPassword) => {
+        const normalizedEmail = email.trim().toLowerCase()
+
+        if (!validateEmail(normalizedEmail)) return 'Correo electrónico inválido'
+
+        const passwordError = validatePassword(newPassword)
+        if (passwordError) return passwordError
+
+        const user = await db.users.where('email').equals(normalizedEmail).first()
+        if (!user) return 'No existe una cuenta con ese correo'
+
+        // Generar nuevo salt y hash (la contraseña anterior no se puede recuperar)
+        const salt = generateSalt()
+        const passwordHash = await hashPassword(newPassword, salt)
+
+        await db.users.update(user.id!, {
+          salt,
+          passwordHash,
+        })
+
         return null
       },
 
