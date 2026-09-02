@@ -1,6 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="96" fill="#16a34a"/>
-  <path d="M128 320c0-88 72-160 160-160h32v64h-32c-53 0-96 43-96 96v32h-64v-32z" fill="white" opacity="0.9"/>
-  <circle cx="352" cy="192" r="48" fill="white" opacity="0.9"/>
-  <rect x="96" y="352" width="320" height="32" rx="16" fill="white" opacity="0.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#16a34a"/>
+  
+  <!-- Coin -->
+  <circle cx="256" cy="95" r="70" fill="white"/>
+  <text x="256" y="120" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="85" font-weight="900" fill="#16a34a">$</text>
+  
+  <!-- Left ear -->
+  <polygon points="120,200 95,130 155,155" fill="white"/>
+  <polygon points="125,195 110,155 145,165" fill="#C8F0D0"/>
+  
+  <!-- Right ear -->
+  <polygon points="392,200 417,130 357,155" fill="white"/>
+  <polygon points="387,195 402,155 367,165" fill="#C8F0D0"/>
+  
+  <!-- Body -->
+  <ellipse cx="256" cy="300" rx="175" ry="145" fill="white"/>
+  
+  <!-- Legs -->
+  <rect x="140" y="420" width="45" height="40" rx="12" fill="white"/>
+  <rect x="327" y="420" width="45" height="40" rx="12" fill="white"/>
+  
+  <!-- Eyes -->
+  <circle cx="186" cy="255" r="14" fill="#1a1a1a"/>
+  <circle cx="326" cy="255" r="14" fill="#1a1a1a"/>
+  
+  <!-- Snout -->
+  <ellipse cx="256" cy="330" rx="70" ry="45" fill="#DCF5E2"/>
+  <ellipse cx="256" cy="330" rx="70" ry="45" fill="none" stroke="#16a34a" stroke-width="4" opacity="0.5"/>
+  
+  <!-- Nostrils -->
+  <circle cx="228" cy="330" r="12" fill="#16a34a"/>
+  <circle cx="284" cy="330" r="12" fill="#16a34a"/>
 </svg>
