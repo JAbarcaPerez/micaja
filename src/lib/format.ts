@@ -18,15 +18,19 @@ export function formatCurrency(amount: number, currency = 'EUR'): string {
 }
 
 export function formatDate(date: string): string {
-  return format(parseISO(date), 'dd MMM yyyy', { locale: es })
+  // Si viene solo YYYY-MM-DD, lo tratamos como fecha local
+  const d = date.length === 10 ? new Date(date + 'T12:00:00') : parseISO(date)
+  return format(d, 'dd MMM yyyy', { locale: es })
 }
 
 export function formatDateShort(date: string): string {
-  return format(parseISO(date), 'dd/MM/yy', { locale: es })
+  const d = date.length === 10 ? new Date(date + 'T12:00:00') : parseISO(date)
+  return format(d, 'dd/MM/yy', { locale: es })
 }
 
 export function formatMonth(date: string): string {
-  return format(parseISO(date), 'MMM yyyy', { locale: es })
+  const d = date.length === 10 ? new Date(date + 'T12:00:00') : parseISO(date)
+  return format(d, 'MMM yyyy', { locale: es })
 }
 
 export function formatPercent(value: number, total: number): string {

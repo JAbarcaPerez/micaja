@@ -54,7 +54,7 @@ export function TransactionForm({ open, onOpenChange, transaction }: Transaction
       description,
       categoryId: parseInt(categoryId),
       accountId: parseInt(accountId),
-      date: new Date(date).toISOString(),
+      date: date, // Guardamos exactamente lo que eligió el usuario (YYYY-MM-DD)
       notes: notes || undefined,
       loanId: loanId ? parseInt(loanId) : undefined,
     }
