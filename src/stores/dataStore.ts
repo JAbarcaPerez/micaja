@@ -1,16 +1,14 @@
 import { create } from 'zustand'
 import { db } from '@/db/database'
-import type { Account, Category, Transaction, SavingsGoal, Loan, BudgetItem, BudgetRubro } from '@/types'
+import type { Account, Category, Transaction, SavingsGoal, Loan, BudgetItem, BudgetKind } from '@/types'
 import { nowISO } from '@/lib/utils'
 import {
   DEFAULT_BUDGET_TEMPLATES,
   currentMonthKey,
-  remainingBudget,
   remainingToAllocate,
   slugifyRubro,
   nextBudgetColor,
 } from '@/lib/budget'
-import type { BudgetKind } from '@/types'
 
 interface DataState {
   accounts: Account[]
