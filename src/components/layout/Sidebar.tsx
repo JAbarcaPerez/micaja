@@ -4,7 +4,6 @@ import {
   ArrowLeftRight,
   Wallet,
   Tags,
-  Target,
   HandCoins,
   BarChart3,
   Settings,
@@ -13,6 +12,7 @@ import {
   PiggyBank,
   LogOut,
   User,
+  PieChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,8 +24,8 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
   { to: '/cuentas', label: 'Cuentas', icon: Wallet },
+  { to: '/presupuesto', label: 'Presupuesto', icon: PieChart },
   { to: '/categorias', label: 'Categorías', icon: Tags },
-  { to: '/ahorros', label: 'Ahorros', icon: Target },
   { to: '/prestamos', label: 'Préstamos', icon: HandCoins },
   { to: '/reportes', label: 'Reportes', icon: BarChart3 },
   { to: '/configuracion', label: 'Configuración', icon: Settings },

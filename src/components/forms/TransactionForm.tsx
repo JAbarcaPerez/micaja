@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { useDataStore } from '@/stores/dataStore'
 import { getTransactionTypeLabel } from '@/lib/format'
-import type { Transaction, TransactionType } from '@/types'
+import { filterBudgetsForType, remainingAllocated, currentMonthKey, getBudgetLabel } from '@/lib/budget'
+import type { Transaction, TransactionType, BudgetRubro } from '@/types'
 
 const transactionTypes: TransactionType[] = ['income', 'expense', 'saving', 'loan_payment', 'loan_received']
 
@@ -30,7 +31,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ open, onOpenChange, transaction }: TransactionFormProps) {
-  const { categories, accounts, loans, addTransaction, updateTransaction } = useDataStore()
+  const { categories, accounts, loans, budgets, addTransaction, updateTransaction } = useDataStore()
   const isEditing = !!transaction
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense')
@@ -41,35 +42,93 @@ export function TransactionForm({ open, onOpenChange, transaction }: Transaction
   const [date, setDate] = useState(transaction?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [loanId, setLoanId] = useState(transaction?.loanId?.toString() ?? '')
+  const [budgetRubro, setBudgetRubro] = useState<string>(transaction?.budgetRubro ?? '')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const filteredCategories = categories.filter((c) => c.isActive && c.type === type)
+  // Pago/cobro de préstamo usa categorías de tipo gasto (ej. "Préstamos")
+  const filteredCategories = categories.filter((c) => {
+    if (!c.isActive) return false
+    if (type === 'loan_payment' || type === 'loan_received') {
+      return c.type === 'expense'
+    }
+    return c.type === type
+  })
   const activeAccounts = accounts.filter((a) => a.isActive)
   const activeLoans = loans.filter((l) => l.status === 'active')
 
+  const month = (date || '').slice(0, 7) || currentMonthKey()
+  const monthBudgets = budgets.filter((b) => b.month === month)
+  const availableBudgets = filterBudgetsForType(monthBudgets, type)
+  // Préstamos no usan rubro de presupuesto; sí requieren seleccionar el préstamo
+  const needsBudget = type === 'expense' || type === 'saving'
+  const needsLoan = type === 'loan_payment' || type === 'loan_received'
+
+  useEffect(() => {
+    if (!needsBudget) setBudgetRubro('')
+  }, [type, needsBudget])
+
+  // Al elegir pago de préstamo, preseleccionar categoría "Préstamos" si existe
+  useEffect(() => {
+    if (type === 'loan_payment' || type === 'loan_received') {
+      const prestamos = categories.find(
+        (c) => c.isActive && c.type === 'expense' && c.name.toLowerCase() === 'préstamos'
+      ) || categories.find(
+        (c) => c.isActive && c.type === 'expense' && c.name.toLowerCase() === 'prestamos'
+      )
+      if (prestamos?.id) {
+        setCategoryId(String(prestamos.id))
+      }
+    }
+  }, [type, categories])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setLoading(true)
+
     const data = {
       type,
       amount: parseFloat(amount),
       description,
       categoryId: parseInt(categoryId),
       accountId: parseInt(accountId),
-      date: date, // Guardamos exactamente lo que eligió el usuario (YYYY-MM-DD)
+      date: date,
       notes: notes || undefined,
       loanId: loanId ? parseInt(loanId) : undefined,
+      budgetRubro: needsBudget && budgetRubro ? (budgetRubro as BudgetRubro) : undefined,
     }
 
+    if (needsBudget && !budgetRubro) {
+      setError('Selecciona un rubro del presupuesto con saldo asignado')
+      setLoading(false)
+      return
+    }
+
+    if (needsLoan && !loanId) {
+      setError('Selecciona el préstamo específico que estás pagando')
+      setLoading(false)
+      return
+    }
+
+    let err: string | null = null
     if (isEditing && transaction?.id) {
-      await updateTransaction(transaction.id, data)
+      err = await updateTransaction(transaction.id, data)
     } else {
-      await addTransaction(data)
+      err = await addTransaction(data)
+    }
+
+    setLoading(false)
+    if (err) {
+      setError(err)
+      return
     }
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar movimiento' : 'Nuevo movimiento'}</DialogTitle>
         </DialogHeader>
@@ -138,7 +197,7 @@ export function TransactionForm({ open, onOpenChange, transaction }: Transaction
                 <SelectContent>
                   {activeAccounts.map((a) => (
                     <SelectItem key={a.id} value={a.id!.toString()}>
-                      {a.name}
+                      {a.name} ({a.balance.toFixed(2)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -146,21 +205,64 @@ export function TransactionForm({ open, onOpenChange, transaction }: Transaction
             </div>
           </div>
 
-          {(type === 'loan_payment' || type === 'loan_received') && (
+          {needsBudget && (
             <div className="space-y-2">
-              <Label>Préstamo</Label>
-              <Select value={loanId} onValueChange={setLoanId}>
+              <Label>Rubro del presupuesto</Label>
+              <Select value={budgetRubro} onValueChange={setBudgetRubro} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar rubro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBudgets.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      Sin rubros — créalos en Presupuesto
+                    </SelectItem>
+                  ) : (
+                    availableBudgets.map((b) => (
+                      <SelectItem key={b.id ?? b.rubro} value={b.rubro}>
+                        {getBudgetLabel(b)} (asignado disp. {remainingAllocated(b).toFixed(2)})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                El gasto se descuenta del presupuesto del rubro y del saldo de la cuenta.
+              </p>
+            </div>
+          )}
+
+          {needsLoan && (
+            <div className="space-y-2">
+              <Label>Préstamo a pagar</Label>
+              <Select value={loanId} onValueChange={setLoanId} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar préstamo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeLoans.map((l) => (
-                    <SelectItem key={l.id} value={l.id!.toString()}>
-                      {l.personName} - {l.direction === 'lent' ? 'Prestado' : 'Recibido'}
+                  {activeLoans.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      No hay préstamos activos
                     </SelectItem>
-                  ))}
+                  ) : (
+                    activeLoans.map((l) => {
+                      const total = l.totalInstallments ?? 0
+                      const paid = l.paidInstallments ?? 0
+                      const left = Math.max(0, total - paid)
+                      return (
+                        <SelectItem key={l.id} value={l.id!.toString()}>
+                          {l.personName}
+                          {total > 0 ? ` · cuotas restantes: ${left}/${total}` : ''}
+                          {` · pendiente: ${(l.principalAmount - l.paidAmount).toFixed(2)}`}
+                        </SelectItem>
+                      )
+                    })
+                  )}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Al registrar el pago se descontará 1 cuota del préstamo seleccionado.
+              </p>
             </div>
           )}
 
@@ -169,11 +271,19 @@ export function TransactionForm({ open, onOpenChange, transaction }: Transaction
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">{isEditing ? 'Guardar' : 'Registrar'}</Button>
+            <Button type="submit" disabled={loading}>
+              {isEditing ? 'Guardar' : 'Registrar'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

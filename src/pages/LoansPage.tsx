@@ -43,24 +43,26 @@ export function LoansPage() {
   const [activeTab, setActiveTab] = useState<'all' | LoanStatus>('all')
 
   const [personName, setPersonName] = useState('')
-  const [direction, setDirection] = useState<LoanDirection>('lent')
+  const [direction, setDirection] = useState<LoanDirection>('borrowed')
   const [principalAmount, setPrincipalAmount] = useState('')
   const [paidAmount, setPaidAmount] = useState('0')
   const [status, setStatus] = useState<LoanStatus>('active')
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
-  const [dueDate, setDueDate] = useState('')
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10))
+  const [totalInstallments, setTotalInstallments] = useState('1')
+  const [paidInstallments, setPaidInstallments] = useState('0')
   const [description, setDescription] = useState('')
 
   const filtered = activeTab === 'all' ? loans : loans.filter((l) => l.status === activeTab)
 
   const resetForm = () => {
     setPersonName('')
-    setDirection('lent')
+    setDirection('borrowed')
     setPrincipalAmount('')
     setPaidAmount('0')
     setStatus('active')
-    setStartDate(new Date().toISOString().slice(0, 10))
-    setDueDate('')
+    setPaymentDate(new Date().toISOString().slice(0, 10))
+    setTotalInstallments('1')
+    setPaidInstallments('0')
     setDescription('')
     setEditing(undefined)
   }
@@ -72,22 +74,27 @@ export function LoansPage() {
     setPrincipalAmount(loan.principalAmount.toString())
     setPaidAmount(loan.paidAmount.toString())
     setStatus(loan.status)
-    setStartDate(loan.startDate.slice(0, 10))
-    setDueDate(loan.dueDate?.slice(0, 10) ?? '')
+    setPaymentDate((loan.paymentDate || loan.startDate || '').slice(0, 10) || new Date().toISOString().slice(0, 10))
+    setTotalInstallments(String(loan.totalInstallments ?? 1))
+    setPaidInstallments(String(loan.paidInstallments ?? 0))
     setDescription(loan.description ?? '')
     setOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const totalInst = Math.max(1, parseInt(totalInstallments) || 1)
+    const paidInst = Math.max(0, parseInt(paidInstallments) || 0)
     const data = {
       personName,
       direction,
       principalAmount: parseFloat(principalAmount),
-      paidAmount: parseFloat(paidAmount),
+      paidAmount: parseFloat(paidAmount) || 0,
       status,
-      startDate: new Date(startDate).toISOString(),
-      dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+      paymentDate,
+      totalInstallments: totalInst,
+      paidInstallments: Math.min(paidInst, totalInst),
+      startDate: paymentDate,
       description: description || undefined,
     }
 
@@ -104,9 +111,15 @@ export function LoansPage() {
     <div>
       <Header
         title="Préstamos"
-        description="Gestiona préstamos prestados y recibidos"
+        description="Gestiona préstamos y el número de cuotas"
         actions={
-          <Button size="sm" onClick={() => { resetForm(); setOpen(true) }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              resetForm()
+              setOpen(true)
+            }}
+          >
             <Plus className="h-4 w-4 mr-1" />
             Nuevo préstamo
           </Button>
@@ -123,26 +136,28 @@ export function LoansPage() {
 
         <TabsContent value={activeTab} className="mt-4">
           {filtered.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No hay préstamos en esta categoría
-              </CardContent>
-            </Card>
+            <p className="text-center text-muted-foreground py-12">No hay préstamos en esta lista</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {filtered.map((loan) => {
                 const pending = loan.principalAmount - loan.paidAmount
-                const progress = loan.principalAmount > 0
-                  ? (loan.paidAmount / loan.principalAmount) * 100
-                  : 0
+                const totalInst = loan.totalInstallments ?? 0
+                const paidInst = loan.paidInstallments ?? 0
+                const remainingInst = Math.max(0, totalInst - paidInst)
+                const progress =
+                  totalInst > 0
+                    ? (paidInst / totalInst) * 100
+                    : loan.principalAmount > 0
+                      ? (loan.paidAmount / loan.principalAmount) * 100
+                      : 0
 
                 return (
                   <Card key={loan.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-3">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
                           <h3 className="font-semibold">{loan.personName}</h3>
-                          <div className="flex gap-2 mt-1">
+                          <div className="flex flex-wrap gap-1 mt-1">
                             <Badge variant="outline">{getLoanDirectionLabel(loan.direction)}</Badge>
                             <Badge variant={statusVariant[loan.status]}>
                               {getLoanStatusLabel(loan.status)}
@@ -167,9 +182,16 @@ export function LoansPage() {
                           </span>
                         </div>
                         <Progress value={progress} className="h-2" />
-                        <div className="flex justify-between text-xs text-muted-foreground">
+                        <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                           <span>Total: {formatCurrency(loan.principalAmount)}</span>
-                          {loan.dueDate && <span>Vence: {formatDate(loan.dueDate)}</span>}
+                          {totalInst > 0 && (
+                            <span>
+                              Cuotas: {paidInst}/{totalInst} (quedan {remainingInst})
+                            </span>
+                          )}
+                          {(loan.paymentDate || loan.startDate) && (
+                            <span>Fecha de pago: {formatDate(loan.paymentDate || loan.startDate)}</span>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -188,27 +210,38 @@ export function LoansPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Persona</Label>
-              <Input required value={personName} onChange={(e) => setPersonName(e.target.value)} />
+              <Label>Persona / Entidad</Label>
+              <Input
+                required
+                value={personName}
+                onChange={(e) => setPersonName(e.target.value)}
+                placeholder="Ej. BBVA, Juan Pérez"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Dirección</Label>
                 <Select value={direction} onValueChange={(v) => setDirection(v as LoanDirection)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lent">Prestado</SelectItem>
-                    <SelectItem value="borrowed">Recibido</SelectItem>
+                    <SelectItem value="borrowed">Recibido (debo)</SelectItem>
+                    <SelectItem value="lent">Prestado (me deben)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Estado</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as LoanStatus)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {statuses.map((s) => (
-                      <SelectItem key={s} value={s}>{getLoanStatusLabel(s)}</SelectItem>
+                      <SelectItem key={s} value={s}>
+                        {getLoanStatusLabel(s)}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -217,29 +250,64 @@ export function LoansPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Monto principal</Label>
-                <Input type="number" step="0.01" required value={principalAmount} onChange={(e) => setPrincipalAmount(e.target.value)} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={principalAmount}
+                  onChange={(e) => setPrincipalAmount(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Pagado</Label>
-                <Input type="number" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={paidAmount}
+                  onChange={(e) => setPaidAmount(e.target.value)}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Fecha inicio</Label>
-                <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <Label>Fecha de pago</Label>
+                <Input
+                  type="date"
+                  required
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
-                <Label>Fecha vencimiento</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <Label>Número de cuotas</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  required
+                  value={totalInstallments}
+                  onChange={(e) => setTotalInstallments(e.target.value)}
+                />
               </div>
             </div>
+            {editing && (
+              <div className="space-y-2">
+                <Label>Cuotas ya pagadas</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={paidInstallments}
+                  onChange={(e) => setPaidInstallments(e.target.value)}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Descripción</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
               <Button type="submit">{editing ? 'Guardar' : 'Crear'}</Button>
             </DialogFooter>
           </form>

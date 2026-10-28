@@ -5,10 +5,10 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { TransactionsPage } from '@/pages/TransactionsPage'
 import { AccountsPage } from '@/pages/AccountsPage'
 import { CategoriesPage } from '@/pages/CategoriesPage'
-import { SavingsPage } from '@/pages/SavingsPage'
 import { LoansPage } from '@/pages/LoansPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { BudgetPage } from '@/pages/BudgetPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 
@@ -29,8 +29,8 @@ export function App() {
             <Route path="movimientos" element={<TransactionsPage />} />
             <Route path="cuentas" element={<AccountsPage />} />
             <Route path="categorias" element={<CategoriesPage />} />
-            <Route path="ahorros" element={<SavingsPage />} />
             <Route path="prestamos" element={<LoansPage />} />
+            <Route path="presupuesto" element={<BudgetPage />} />
             <Route path="reportes" element={<ReportsPage />} />
             <Route path="configuracion" element={<SettingsPage />} />
           </Route>

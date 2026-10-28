@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Account, Category, Transaction, SavingsGoal, Loan, User } from '@/types'
+import type { Account, Category, Transaction, SavingsGoal, Loan, User, BudgetItem } from '@/types'
 
 export class MiCajaDB extends Dexie {
   accounts!: EntityTable<Account, 'id'>
@@ -8,6 +8,7 @@ export class MiCajaDB extends Dexie {
   savingsGoals!: EntityTable<SavingsGoal, 'id'>
   loans!: EntityTable<Loan, 'id'>
   users!: EntityTable<User, 'id'>
+  budgets!: EntityTable<BudgetItem, 'id'>
 
   constructor() {
     super('MiCajaDB')
@@ -22,6 +23,10 @@ export class MiCajaDB extends Dexie {
 
     this.version(2).stores({
       users: '++id, &email',
+    })
+
+    this.version(3).stores({
+      budgets: '++id, rubro, month, [rubro+month]',
     })
   }
 }

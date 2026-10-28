@@ -33,6 +33,12 @@ export interface Category {
   createdAt: string
 }
 
+/** Clave del rubro de presupuesto (fijos o personalizados) */
+export type BudgetRubro = string
+
+/** Tipo de uso del rubro en movimientos */
+export type BudgetKind = 'expense' | 'saving'
+
 export interface Transaction {
   id?: number
   type: TransactionType
@@ -43,7 +49,30 @@ export interface Transaction {
   date: string
   notes?: string
   loanId?: number
+  /** Rubro de presupuesto al que se imputa el gasto/ahorro */
+  budgetRubro?: BudgetRubro
   createdAt: string
+  updatedAt: string
+}
+
+/** Presupuesto por rubro y mes (YYYY-MM) */
+export interface BudgetItem {
+  id?: number
+  /** Clave única del rubro dentro del mes (slug) */
+  rubro: BudgetRubro
+  /** Nombre visible */
+  name: string
+  /** Si aplica a gastos o a ahorros */
+  kind: BudgetKind
+  color: string
+  /** Monto planificado del presupuesto (editable) */
+  plannedAmount: number
+  /** Dinero asignado desde la cuenta (no puede superar plannedAmount) */
+  allocatedAmount: number
+  /** Monto ya gastado/usado del rubro */
+  spentAmount: number
+  /** Mes del presupuesto, formato YYYY-MM */
+  month: string
   updatedAt: string
 }
 
@@ -69,6 +98,13 @@ export interface Loan {
   paidAmount: number
   interestRate?: number
   status: LoanStatus
+  /** Fecha de pago de la cuota */
+  paymentDate?: string
+  /** Número total de cuotas */
+  totalInstallments?: number
+  /** Cuotas ya pagadas */
+  paidInstallments?: number
+  /** Compatibilidad */
   startDate: string
   dueDate?: string
   description?: string
